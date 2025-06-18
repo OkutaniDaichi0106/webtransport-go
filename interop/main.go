@@ -22,7 +22,7 @@ import (
 
 	"github.com/quic-go/quic-go/http3"
 
-	"github.com/quic-go/webtransport-go"
+	"github.com/OkutaniDaichi0106/webtransport-go"
 )
 
 //go:embed index.html
