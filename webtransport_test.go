@@ -15,8 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/exp/rand"
-
 	"github.com/OkutaniDaichi0106/webtransport-go"
 
 	"github.com/quic-go/quic-go"
