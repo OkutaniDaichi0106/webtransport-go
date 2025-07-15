@@ -2,6 +2,7 @@ package webtransport_test
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -46,7 +47,7 @@ func runServer(t *testing.T, s *webtransport.Server) (addr *net.UDPAddr, close f
 func establishSession(t *testing.T, handler func(*webtransport.Session)) (sess *webtransport.Session, close func()) {
 	s := &webtransport.Server{
 		H3: http3.Server{
-			TLSConfig:  tlsConf,
+			TLSConfig:  webtransport.TLSConf,
 			QUICConfig: &quic.Config{Tracer: qlog.DefaultConnectionTracer, EnableDatagrams: true},
 		},
 	}
@@ -54,7 +55,7 @@ func establishSession(t *testing.T, handler func(*webtransport.Session)) (sess *
 
 	addr, closeServer := runServer(t, s)
 	d := webtransport.Dialer{
-		TLSClientConfig: &tls.Config{RootCAs: certPool},
+		TLSClientConfig: &tls.Config{RootCAs: webtransport.CertPool},
 		QUICConfig:      &quic.Config{Tracer: qlog.DefaultConnectionTracer, EnableDatagrams: true},
 	}
 	defer d.Close()
@@ -302,7 +303,7 @@ func TestUnidirectionalStreams(t *testing.T) {
 func TestMultipleClients(t *testing.T) {
 	const numClients = 5
 	s := &webtransport.Server{
-		H3: http3.Server{TLSConfig: tlsConf},
+		H3: http3.Server{TLSConfig: webtransport.TLSConf},
 	}
 	defer s.Close()
 	addHandler(t, s, newEchoHandler(t))
@@ -316,7 +317,7 @@ func TestMultipleClients(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			d := webtransport.Dialer{
-				TLSClientConfig: &tls.Config{RootCAs: certPool},
+				TLSClientConfig: &tls.Config{RootCAs: webtransport.CertPool},
 				QUICConfig:      &quic.Config{Tracer: qlog.DefaultConnectionTracer, EnableDatagrams: true},
 			}
 			defer d.Close()
@@ -332,7 +333,7 @@ func TestMultipleClients(t *testing.T) {
 
 func TestStreamResetError(t *testing.T) {
 	const errorCode webtransport.StreamErrorCode = 127
-	strChan := make(chan webtransport.Stream, 1)
+	strChan := make(chan *webtransport.Stream, 1)
 	sess, closeServer := establishSession(t, func(sess *webtransport.Session) {
 		for {
 			str, err := sess.AcceptStream(context.Background())
@@ -409,7 +410,7 @@ func TestOpenStreamSyncShutdown(t *testing.T) {
 
 		const num = 3
 		errChan := make(chan error, num)
-		for i := 0; i < num; i++ {
+		for range num {
 			go func() { errChan <- openStreamSync() }()
 		}
 
@@ -417,7 +418,7 @@ func TestOpenStreamSyncShutdown(t *testing.T) {
 		require.Never(t, func() bool { return len(errChan) > 0 }, 100*time.Millisecond, 10*time.Millisecond)
 		close(done)
 		require.Eventually(t, func() bool { return len(errChan) == num }, scaleDuration(100*time.Millisecond), 10*time.Millisecond)
-		for i := 0; i < num; i++ {
+		for range num {
 			err := <-errChan
 			var sessErr *webtransport.SessionError
 			require.ErrorAs(t, err, &sessErr)
@@ -493,10 +494,9 @@ func TestCheckOrigin(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			s := &webtransport.Server{
-				H3:          http3.Server{TLSConfig: tlsConf},
+				H3:          http3.Server{TLSConfig: webtransport.TLSConf},
 				CheckOrigin: tc.CheckOrigin,
 			}
 			defer s.Close()
@@ -506,7 +506,7 @@ func TestCheckOrigin(t *testing.T) {
 			defer closeServer()
 
 			d := webtransport.Dialer{
-				TLSClientConfig: &tls.Config{RootCAs: certPool},
+				TLSClientConfig: &tls.Config{RootCAs: webtransport.CertPool},
 				QUICConfig:      &quic.Config{Tracer: qlog.DefaultConnectionTracer, EnableDatagrams: true},
 			}
 			defer d.Close()
