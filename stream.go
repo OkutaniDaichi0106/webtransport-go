@@ -1,6 +1,7 @@
 package webtransport
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ type quicSendStream interface {
 	StreamID() quic.StreamID
 	CancelWrite(quic.StreamErrorCode)
 	SetWriteDeadline(time.Time) error
+	Context() context.Context
 }
 
 var (
@@ -104,6 +106,10 @@ func (s *SendStream) StreamID() quic.StreamID {
 	return s.str.StreamID()
 }
 
+func (s *SendStream) Context() context.Context {
+	return s.str.Context()
+}
+
 type ReceiveStream struct {
 	str     quicReceiveStream
 	onClose func()
@@ -179,6 +185,10 @@ func (s *Stream) CancelRead(e StreamErrorCode) {
 
 func (s *Stream) Close() error {
 	return s.sendStr.Close()
+}
+
+func (s *Stream) Context() context.Context {
+	return s.sendStr.Context()
 }
 
 func (s *Stream) registerClose(isSendSide bool) {
